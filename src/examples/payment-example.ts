@@ -8,13 +8,13 @@
 import { type Result, isError, error, ok } from "../helpers/result";
 import { type Tag, matchTag } from "../helpers/tag";
 
-type Check = Tag<"Check", { number: number }>;
-type Card = Tag<"Card", { number: string; type: CardType }>;
-type Cash = Tag<"Cash", number>;
-
 type Visa = Tag<"Visa">; // if you omit the second parameter, the type will be "Visa"
 type Mastercard = Tag<"Mastercard">;
 type CardType = Visa | Mastercard;
+
+type Check = Tag<"Check", { number: number }>;
+type Card = Tag<"Card", { number: string; type: CardType }>;
+type Cash = Tag<"Cash", number>;
 
 type USD = Tag<"USD">;
 type EUR = Tag<"EUR">;
