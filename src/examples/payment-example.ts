@@ -22,7 +22,7 @@ type EUR = Tag<"EUR">;
 type Currency = USD | EUR;
 type Amount = Tag<"Amount", number>;
 
-type Cash = Tag<"Cash", { amount: Amount }>;
+type Cash = Tag<"Cash">;
 
 type PaymentMethod = Card | Check | Cash;
 
