@@ -2,6 +2,13 @@ import { pipeResult } from "../helpers/pipe";
 import { type Result, error, isError, ok } from "../helpers/result";
 import { type Tag } from "../helpers/tag";
 
+/**
+ * Illegal states avoided by types:
+ * - An email string should NEVER be used before it is validated
+ * - A reset password should NEVER be sent to an unverified email
+ * - An updated email should NEVER be used before it is verified
+ */
+
 // ======================================================
 // Types
 

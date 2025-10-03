@@ -2,6 +2,13 @@ import { pipeResult } from "../helpers/pipe";
 import { type Result, error, isError, ok } from "../helpers/result";
 import { type Tag } from "../helpers/tag";
 
+/**
+ * Illegal states avoided by types:
+ * - A shipped package should NEVER be shipped again
+ * - A package that was not shipped should NEVER be delivered
+ * - A delivered package should NEVER be shipped
+ */
+
 // ======================================================
 // Types
 

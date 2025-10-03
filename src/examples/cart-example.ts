@@ -2,6 +2,13 @@ import { pipeResult } from "../helpers/pipe";
 import { type Result, ok, error, isError } from "../helpers/result";
 import { type Tag } from "../helpers/tag";
 
+/**
+ * Illegal states avoided by types:
+ * - A paid cart should NEVER have items added to it
+ * - An empty cart should NEVER be paid for
+ * - Empty carts should NEVER have items removed from them
+ */
+
 // ======================================================
 // Types
 
