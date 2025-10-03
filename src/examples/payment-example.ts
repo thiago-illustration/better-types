@@ -69,7 +69,13 @@ export function example() {
     },
   };
 
-  matchTag<PaymentMethod>(paymentMethod, {
+  const payment: Payment = {
+    amount: amountResult.data,
+    currency: { _tag: "USD", value: "USD" },
+    method: paymentMethod,
+  };
+
+  matchTag<PaymentMethod>(payment.method, {
     Card: (card) => {
       console.log(card.value.number, card.value.type);
     },
@@ -80,12 +86,4 @@ export function example() {
       console.log(cash.value);
     },
   });
-
-  const payment: Payment = {
-    amount: amountResult.data,
-    currency: { _tag: "USD", value: "USD" },
-    method: paymentMethod,
-  };
-
-  return payment;
 }
