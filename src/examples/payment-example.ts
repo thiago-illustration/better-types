@@ -11,15 +11,18 @@ import { type Tag, matchTag } from "../helpers/tag";
 type Visa = Tag<"Visa">; // if you omit the second parameter, the type will be "Visa"
 type Mastercard = Tag<"Mastercard">;
 type CardType = Visa | Mastercard;
+type CardNumber = Tag<"CardNumber", string>;
+type Card = Tag<"Card", { number: CardNumber; type: CardType }>;
 
-type Check = Tag<"Check", { number: number }>;
-type Card = Tag<"Card", { number: string; type: CardType }>;
-type Cash = Tag<"Cash", number>;
+type CheckNumber = Tag<"CheckNumber", number>;
+type Check = Tag<"Check", { number: CheckNumber }>;
 
 type USD = Tag<"USD">;
 type EUR = Tag<"EUR">;
 type Currency = USD | EUR;
 type Amount = Tag<"Amount", number>;
+
+type Cash = Tag<"Cash", { amount: Amount }>;
 
 type PaymentMethod = Card | Check | Cash;
 
@@ -42,14 +45,26 @@ const createAmount = (amount: number): Result<Amount, "NegativeAmount"> => {
   });
 };
 
+const createCardNumber = (
+  number: string
+): Result<CardNumber, "InvalidCardNumber"> => {
+  if (number.length !== 16) {
+    return error("InvalidCardNumber");
+  }
+  return ok({ _tag: "CardNumber", value: number });
+};
+
 export function example() {
   const amountResult = createAmount(100);
   if (isError(amountResult)) return;
 
+  const cardNumberResult = createCardNumber("1234567890");
+  if (isError(cardNumberResult)) return;
+
   const paymentMethod: PaymentMethod = {
     _tag: "Card",
     value: {
-      number: "1234567890",
+      number: cardNumberResult.data,
       type: { _tag: "Visa", value: "Visa" },
     },
   };
