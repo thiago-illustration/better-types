@@ -17,12 +17,12 @@ type Card = Tag<"Card", { number: CardNumber; type: CardType }>;
 type CheckNumber = Tag<"CheckNumber", number>;
 type Check = Tag<"Check", { number: CheckNumber }>;
 
+type Cash = Tag<"Cash">;
+
 type USD = Tag<"USD">;
 type EUR = Tag<"EUR">;
 type Currency = USD | EUR;
 type Amount = Tag<"Amount", number>;
-
-type Cash = Tag<"Cash">;
 
 type PaymentMethod = Card | Check | Cash;
 
