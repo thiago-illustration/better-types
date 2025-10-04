@@ -5,29 +5,33 @@
  * Everything should be type-safe with intelliSense working.
  */
 
+import { pipeWithContext } from "../helpers/pipe";
 import { type Result, isError, error, ok } from "../helpers/result";
-import { type Tag, createTagged, matchTag } from "../helpers/tag";
+import { type Tag, createTag, matchTag } from "../helpers/tag";
 
-// Create singleton instances and extract types
-const VISA = createTagged("Visa");
-const MASTERCARD = createTagged("Mastercard"); // eslint-disable-line @typescript-eslint/no-unused-vars
-const USD = createTagged("USD");
-const EUR = createTagged("EUR");
+// Define types first (source of truth)
+type Visa = Tag<"Visa">;
+type Mastercard = Tag<"Mastercard">;
+type USD = Tag<"USD">;
+type EUR = Tag<"EUR">;
 
-// Extract types from instances
-type Visa = typeof VISA;
-type Mastercard = typeof MASTERCARD;
-type USD = typeof USD;
-type EUR = typeof EUR;
+// Create singleton instances using the types
+const VISA = createTag<Visa>("Visa");
+const MASTERCARD = createTag<Mastercard>("Mastercard"); // eslint-disable-line @typescript-eslint/no-unused-vars
+const USD = createTag<USD>("USD");
+const EUR = createTag<EUR>("EUR");
 
 // Define other types
 type CardType = Visa | Mastercard;
-type Currency = USD | EUR;
 type CardNumber = Tag<"CardNumber", string>;
 type Card = Tag<"Card", { number: CardNumber; type: CardType }>;
+
 type CheckNumber = Tag<"CheckNumber", number>;
 type Check = Tag<"Check", { number: CheckNumber }>;
+
 type Cash = Tag<"Cash">;
+
+type Currency = USD | EUR;
 type Amount = Tag<"Amount", number>;
 
 type PaymentMethod = Card | Check | Cash;
@@ -42,19 +46,15 @@ export type Payment = {
 // Example
 
 const createAmount = (amount: number): Result<Amount, "NegativeAmount"> => {
-  if (amount < 0) {
-    return error("NegativeAmount");
-  }
-  return ok(createTagged("Amount", amount));
+  if (amount < 0) return error("NegativeAmount");
+  return ok(createTag("Amount", amount));
 };
 
 const createCardNumber = (
   number: string
 ): Result<CardNumber, "InvalidCardNumber"> => {
-  if (number.length !== 16) {
-    return error("InvalidCardNumber");
-  }
-  return ok(createTagged("CardNumber", number));
+  if (number.length !== 16) return error("InvalidCardNumber");
+  return ok(createTag("CardNumber", number));
 };
 
 export function example() {
@@ -89,4 +89,25 @@ export function example() {
       console.log(cash.value);
     },
   });
+}
+
+export function pipeExampleWithContext() {
+  const result = pipeWithContext<{ amount: Amount }>(createAmount(100))
+    .setContext((amount, ctx) => ctx.set("amount", amount))
+    .flatMap(() => createCardNumber("1234567890"))
+    .mapToResult((cardNumber) =>
+      createTag<Card>("Card", {
+        number: cardNumber,
+        type: VISA,
+      })
+    )
+    .mapToResult((card, ctx) => ({
+      amount: ctx.get("amount")!,
+      currency: USD,
+      method: card,
+    }))
+    .unwrap();
+
+  if (isError(result)) return;
+  return result.data;
 }

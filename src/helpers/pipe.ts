@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { type Result, ok, error } from "./result";
 
 /**
@@ -59,6 +61,24 @@ class ResultPipe<T, E> {
   flatMap<R, F>(fn: (value: T) => Result<R, F>): ResultPipe<R, E | F> {
     if (this.result._tag === "Ok") {
       return new ResultPipe(fn(this.result.data));
+    } else {
+      return new ResultPipe(error(this.result.error));
+    }
+  }
+
+  /**
+   * Map with automatic Result wrapping - automatically wraps return value in ok()
+   * @param fn - Function that receives current value, returns value (not Result)
+   * @returns ResultPipe with chained value wrapped in Result
+   * @example
+   * const result = pipeResult(ok(1))
+   *   .mapToResult((value) => value + 1)
+   *   .mapToResult((value) => `Number: ${value}`)
+   *   .unwrap();
+   */
+  mapToResult<R>(fn: (value: T) => R): ResultPipe<R, E> {
+    if (this.result._tag === "Ok") {
+      return new ResultPipe(ok(fn(this.result.data)));
     } else {
       return new ResultPipe(error(this.result.error));
     }
@@ -215,6 +235,198 @@ class ResultPipe<T, E> {
       throw new Error(String(this.result.error));
     }
   }
+}
+
+/**
+ * ContextPipe - A ResultPipe with context support for accumulating values
+ *
+ * Allows you to store and retrieve values throughout the pipe chain,
+ * solving the problem of needing values from earlier in the chain later on.
+ *
+ * @example
+ * const result = pipeResultWithContext(ok(100))
+ *   .setContext((amount, ctx) => ctx.set("amount", amount))
+ *   .flatMap((amount) => ok(amount * 2))
+ *   .flatMap((doubled, ctx) => ok({
+ *     original: ctx.get("amount"),
+ *     doubled: doubled
+ *   }))
+ *   .unwrap();
+ */
+class ContextPipe<T, E, C extends Record<string, any> = Record<string, never>> {
+  readonly result: Result<T, E>;
+  readonly context: C;
+
+  constructor(result: Result<T, E>, context: C = {} as C) {
+    this.result = result;
+    this.context = context;
+  }
+
+  /**
+   * Set a value in the context
+   * @param fn - Function that receives current value and context, returns updated context
+   * @returns ContextPipe with updated context
+   */
+  setContext(
+    fn: (value: T, ctx: Context<C>) => Context<C>
+  ): ContextPipe<T, E, C> {
+    if (this.result._tag === "Ok") {
+      const newContext = fn(this.result.data, new Context(this.context));
+      return new ContextPipe(this.result, newContext.getContext());
+    } else {
+      return new ContextPipe(error(this.result.error), this.context);
+    }
+  }
+
+  /**
+   * Map over success value with access to context
+   * @param fn - Function that receives current value and context
+   * @returns ContextPipe with mapped value
+   */
+  map<R>(fn: (value: T, ctx: Context<C>) => R): ContextPipe<R, E, C> {
+    if (this.result._tag === "Ok") {
+      return new ContextPipe(
+        ok(fn(this.result.data, new Context(this.context))),
+        this.context
+      );
+    } else {
+      return new ContextPipe(error(this.result.error), this.context);
+    }
+  }
+
+  /**
+   * FlatMap with access to context
+   * @param fn - Function that receives current value and context, returns Result
+   * @returns ContextPipe with chained value
+   */
+  flatMap<R, F>(
+    fn: (value: T, ctx: Context<C>) => Result<R, F>
+  ): ContextPipe<R, E | F, C> {
+    if (this.result._tag === "Ok") {
+      return new ContextPipe(
+        fn(this.result.data, new Context(this.context)),
+        this.context
+      );
+    } else {
+      return new ContextPipe(error(this.result.error), this.context);
+    }
+  }
+
+  /**
+   * Map with automatic Result wrapping - automatically wraps return value in ok()
+   * @param fn - Function that receives current value and context, returns value (not Result)
+   * @returns ContextPipe with chained value wrapped in Result
+   */
+  mapToResult<R>(fn: (value: T, ctx: Context<C>) => R): ContextPipe<R, E, C> {
+    if (this.result._tag === "Ok") {
+      return new ContextPipe(
+        ok(fn(this.result.data, new Context(this.context))),
+        this.context
+      );
+    } else {
+      return new ContextPipe(error(this.result.error), this.context);
+    }
+  }
+
+  /**
+   * Unwrap the Result
+   * @returns The final Result<T, E> value
+   */
+  unwrap(): Result<T, E> {
+    return this.result;
+  }
+
+  /**
+   * Get the current context
+   * @returns The current context
+   */
+  getContext(): C {
+    return this.context;
+  }
+}
+
+/**
+ * Context helper class for type-safe context operations
+ */
+class Context<C extends Record<string, any>> {
+  private context: C;
+
+  constructor(context: C) {
+    this.context = { ...context };
+  }
+
+  /**
+   * Set a value in the context
+   * @param key - The key to set
+   * @param value - The value to set
+   * @returns New Context instance with updated value
+   */
+  set<K extends string, V>(key: K, value: V): Context<C & Record<K, V>> {
+    return new Context({ ...this.context, [key]: value } as C & Record<K, V>);
+  }
+
+  /**
+   * Get a value from the context
+   * @param key - The key to get
+   * @returns The value or undefined
+   */
+  get<K extends keyof C>(key: K): C[K] | undefined {
+    return this.context[key];
+  }
+
+  /**
+   * Get the current context object
+   * @returns The current context
+   */
+  getContext(): C {
+    return this.context;
+  }
+}
+
+/**
+ * Creates a new ContextPipe from a Result value
+ *
+ * @param result - The Result value to wrap in a context pipe
+ * @returns A new ContextPipe instance
+ *
+ * @example
+ * const pipe = pipeResultWithContext(ok(42));
+ * const result = pipe
+ *   .setContext((value, ctx) => ctx.set("amount", value))
+ *   .map((value, ctx) => value * 2)
+ *   .unwrap();
+ */
+export const pipeResultWithContext = <
+  T,
+  E,
+  C extends Record<string, any> = Record<string, never>
+>(
+  result: Result<T, E>
+): ContextPipe<T, E, C> => new ContextPipe(result);
+
+/**
+ * Creates a new ContextPipe with a specific context type and proper type inference
+ *
+ * @param result - The Result value to wrap in a context pipe
+ * @returns A new ContextPipe instance with inferred types and specified context
+ *
+ * @example
+ * const pipe = pipeWithContext<{ amount: Amount }>(createAmount(100));
+ * const result = pipe
+ *   .setContext((amount, ctx) => ctx.set("amount", amount))
+ *   .flatMap((card, ctx) => ok({ amount: ctx.get("amount")! }))
+ *   .unwrap();
+ */
+export function pipeWithContext<C extends Record<string, any>>(
+  result: Result<any, any>
+): ContextPipe<any, any, C>;
+export function pipeWithContext<T, E, C extends Record<string, any>>(
+  result: Result<T, E>
+): ContextPipe<T, E, C>;
+export function pipeWithContext<T, E, C extends Record<string, any>>(
+  result: Result<T, E>
+): ContextPipe<T, E, C> {
+  return new ContextPipe(result);
 }
 
 /**

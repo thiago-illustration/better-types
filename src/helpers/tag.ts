@@ -15,16 +15,20 @@ export function matchTag<T extends Tag<string, any>>(
   );
 }
 
-export function createTagged<T extends string>(tag: T): Tag<T>;
-export function createTagged<T extends string, V>(tag: T, value: V): Tag<T, V>;
-export function createTagged<T extends string, V>(
-  tag: T,
-  value?: V
-): Tag<T, V> {
+// Type-safe factory function that ensures runtime matches type definition
+export function createTag<T extends Tag<string, never>>(tag: T["_tag"]): T;
+export function createTag<T extends Tag<string, unknown>>(
+  tag: T["_tag"],
+  value: T["value"]
+): T;
+export function createTag<T extends Tag<string, unknown>>(
+  tag: T["_tag"],
+  value?: T["value"]
+): T {
   if (value === undefined) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return { _tag: tag, value: tag as any };
+    return { _tag: tag, value: tag as any } as T;
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return { _tag: tag, value: value as any };
+  return { _tag: tag, value: value as any } as T;
 }
