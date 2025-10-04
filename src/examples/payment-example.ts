@@ -106,6 +106,19 @@ export function pipeExampleWithContext() {
       currency: USD,
       method: card,
     }))
+    .tap((payment) => {
+      matchTag<PaymentMethod>(payment.method, {
+        Card: (card) => {
+          console.log(card.value.number, card.value.type);
+        },
+        Check: (check) => {
+          console.log(check.value.number);
+        },
+        Cash: (cash) => {
+          console.log(cash.value);
+        },
+      });
+    })
     .unwrap();
 
   if (isError(result)) return;

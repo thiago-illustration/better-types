@@ -329,6 +329,23 @@ class ContextPipe<T, E, C extends Record<string, any> = Record<string, never>> {
   }
 
   /**
+   * Tap - side effects without changing the Result (only executes on success)
+   * @param fn - Function to tap (only called if Result is Ok)
+   * @returns ContextPipe with same value (unchanged)
+   * @example
+   * const result = pipeWithContext<{ amount: Amount }>(createAmount(100))
+   *   .tap((amount, ctx) => console.log(`Processing amount: ${amount}`))
+   *   .mapToResult((amount) => amount * 2)
+   *   .unwrap();
+   */
+  tap(fn: (value: T, ctx: Context<C>) => void): ContextPipe<T, E, C> {
+    if (this.result._tag === "Ok") {
+      fn(this.result.data, new Context(this.context));
+    }
+    return this;
+  }
+
+  /**
    * Unwrap the Result
    * @returns The final Result<T, E> value
    */
