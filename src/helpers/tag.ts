@@ -14,3 +14,17 @@ export function matchTag<T extends Tag<string, any>>(
     tagged as Extract<T, { _tag: typeof tagged._tag }>
   );
 }
+
+export function createTagged<T extends string>(tag: T): Tag<T>;
+export function createTagged<T extends string, V>(tag: T, value: V): Tag<T, V>;
+export function createTagged<T extends string, V>(
+  tag: T,
+  value?: V
+): Tag<T, V> {
+  if (value === undefined) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return { _tag: tag, value: tag as any };
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return { _tag: tag, value: value as any };
+}

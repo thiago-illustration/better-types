@@ -6,22 +6,28 @@
  */
 
 import { type Result, isError, error, ok } from "../helpers/result";
-import { type Tag, matchTag } from "../helpers/tag";
+import { type Tag, createTagged, matchTag } from "../helpers/tag";
 
-type Visa = Tag<"Visa">; // if you omit the second parameter, the type will be "Visa"
-type Mastercard = Tag<"Mastercard">;
+// Create singleton instances and extract types
+const VISA = createTagged("Visa");
+const MASTERCARD = createTagged("Mastercard"); // eslint-disable-line @typescript-eslint/no-unused-vars
+const USD = createTagged("USD");
+const EUR = createTagged("EUR");
+
+// Extract types from instances
+type Visa = typeof VISA;
+type Mastercard = typeof MASTERCARD;
+type USD = typeof USD;
+type EUR = typeof EUR;
+
+// Define other types
 type CardType = Visa | Mastercard;
+type Currency = USD | EUR;
 type CardNumber = Tag<"CardNumber", string>;
 type Card = Tag<"Card", { number: CardNumber; type: CardType }>;
-
 type CheckNumber = Tag<"CheckNumber", number>;
 type Check = Tag<"Check", { number: CheckNumber }>;
-
 type Cash = Tag<"Cash">;
-
-type USD = Tag<"USD">;
-type EUR = Tag<"EUR">;
-type Currency = USD | EUR;
 type Amount = Tag<"Amount", number>;
 
 type PaymentMethod = Card | Check | Cash;
@@ -39,10 +45,7 @@ const createAmount = (amount: number): Result<Amount, "NegativeAmount"> => {
   if (amount < 0) {
     return error("NegativeAmount");
   }
-  return ok({
-    _tag: "Amount",
-    value: amount,
-  });
+  return ok(createTagged("Amount", amount));
 };
 
 const createCardNumber = (
@@ -51,7 +54,7 @@ const createCardNumber = (
   if (number.length !== 16) {
     return error("InvalidCardNumber");
   }
-  return ok({ _tag: "CardNumber", value: number });
+  return ok(createTagged("CardNumber", number));
 };
 
 export function example() {
@@ -65,13 +68,13 @@ export function example() {
     _tag: "Card",
     value: {
       number: cardNumberResult.data,
-      type: { _tag: "Visa", value: "Visa" },
+      type: VISA,
     },
   };
 
   const payment: Payment = {
     amount: amountResult.data,
-    currency: { _tag: "USD", value: "USD" },
+    currency: USD,
     method: paymentMethod,
   };
 
