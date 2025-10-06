@@ -15,13 +15,11 @@ type Mastercard = Tag<"Mastercard">;
 type USD = Tag<"USD">;
 type EUR = Tag<"EUR">;
 
-// Create singleton instances using the types
 const VISA = createTag<Visa>("Visa");
 const MASTERCARD = createTag<Mastercard>("Mastercard"); // eslint-disable-line @typescript-eslint/no-unused-vars
 const USD = createTag<USD>("USD");
 const EUR = createTag<EUR>("EUR");
 
-// Define other types
 type CardType = Visa | Mastercard;
 type CardNumber = Tag<"CardNumber", string>;
 type Card = Tag<"Card", { number: CardNumber; type: CardType }>;
@@ -43,25 +41,35 @@ export type Payment = {
 };
 
 // ======================================================
-// Example
+// Factory functions
+// Function names starting with "try" are not guaranteed to succeed and should return a Result type
 
-const createAmount = (amount: number): Result<Amount, "NegativeAmount"> => {
-  if (amount < 0) return error("NegativeAmount");
+const tryCreateAmount = (
+  amount: number
+): Result<Amount, "NoNegativeAmount" | "TooLargeAmount"> => {
+  if (amount < 0) return error("NoNegativeAmount");
+  if (amount > 1_000_000) return error("TooLargeAmount");
   return ok(createTag("Amount", amount));
 };
 
-const createCardNumber = (
+const tryCreateCardNumber = (
   number: string
 ): Result<CardNumber, "InvalidCardNumber"> => {
-  if (number.length !== 16) return error("InvalidCardNumber");
+  const wrongLength = number.length !== 16;
+  const wrongFormat = !/^\d+$/.test(number); // Only digits allowed
+
+  if (wrongLength || wrongFormat) return error("InvalidCardNumber");
   return ok(createTag("CardNumber", number));
 };
 
+// ======================================================
+// Examples
+
 export function example() {
-  const amountResult = createAmount(100);
+  const amountResult = tryCreateAmount(100);
   if (isError(amountResult)) return;
 
-  const cardNumberResult = createCardNumber("1234567890");
+  const cardNumberResult = tryCreateCardNumber("1234567890");
   if (isError(cardNumberResult)) return;
 
   const paymentMethod: PaymentMethod = {
@@ -92,9 +100,9 @@ export function example() {
 }
 
 export function pipeExampleWithContext() {
-  const result = pipeWithContext<{ amount: Amount }>(createAmount(100))
+  const result = pipeWithContext<{ amount: Amount }>(tryCreateAmount(100))
     .setContext((amount, ctx) => ctx.set("amount", amount))
-    .flatMap(() => createCardNumber("1234567890"))
+    .flatMap(() => tryCreateCardNumber("1234567890"))
     .mapToResult((cardNumber) =>
       createTag<Card>("Card", {
         number: cardNumber,

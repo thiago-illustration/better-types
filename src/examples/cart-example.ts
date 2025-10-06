@@ -1,6 +1,6 @@
 import { pipeResult } from "../helpers/pipe";
 import { type Result, ok, error, isError } from "../helpers/result";
-import { type Tag } from "../helpers/tag";
+import { createTag, type Tag } from "../helpers/tag";
 
 /**
  * Illegal states avoided by types:
@@ -12,13 +12,21 @@ import { type Tag } from "../helpers/tag";
 // ======================================================
 // Types
 
-type Item = Tag<"Item", { id: string; name: string; price: number }>;
+type ID = Tag<"ID", string>;
+type Str100 = Tag<"Str100", string>; // Max 100 characters
+type Price = Tag<"Price", number>;
+
+type Item = Tag<"Item", { id: ID; name: Str100; price: Price }>;
 type EmptyCart = Tag<"EmptyCart", Item[]>;
 type ActiveCart = Tag<"ActiveCart", Item[]>;
 type PaidCart = Tag<"PaidCart", Item[]>;
 
 // ======================================================
 // Errors
+
+type CreateStr100Error = "StringTooLong";
+type CreatePriceError = "PriceTooLow" | "PriceTooHigh";
+type CreateItemError = CreateStr100Error | CreatePriceError;
 
 type AddToCartError = "ItemAlreadyInCart";
 type RemoveFromCartError = "UnableToRemoveItem";
@@ -33,7 +41,7 @@ type CreateItemPayload = {
   price: number;
 };
 
-type CreateItem = (payload: CreateItemPayload) => Result<Item, never>;
+type CreateItem = (payload: CreateItemPayload) => Result<Item, CreateItemError>;
 type CreateEmptyCart = () => Result<EmptyCart, never>;
 type CreateActiveCart = (items: Item[]) => Result<ActiveCart, never>;
 type CreatePaidCart = (items: Item[]) => Result<PaidCart, never>;
@@ -53,7 +61,7 @@ type PayForCart = (cart: ActiveCart) => Result<PaidCart, PayForCartError>;
 // ======================================================
 // Functions
 
-const addToCart: AddToCart = (cart, item) => {
+const tryAddToCart: AddToCart = (cart, item) => {
   if (cart._tag === "EmptyCart") {
     const activeCart = createActiveCart([item]);
     return activeCart;
@@ -65,27 +73,45 @@ const addToCart: AddToCart = (cart, item) => {
   return ok({ ...cart, value: [...cart.value, item] });
 };
 
-const removeFromCart: RemoveFromCart = (cart, itemId) => {
-  const items = cart.value.filter((i) => i.value.id !== itemId);
+const tryRemoveFromCart: RemoveFromCart = (cart, itemId) => {
+  const items = cart.value.filter((i) => i.value.id.value !== itemId);
 
   if (items.length === 0) return createEmptyCart();
   return createActiveCart(items);
 };
 
-const payForCart: PayForCart = (cart) => {
+const tryPayForCart: PayForCart = (cart) => {
   return createPaidCart(cart.value);
 };
 
 // ======================================================
-// Factories
+// Factory functions
+// Function names starting with "try" are not guaranteed to succeed and should return a Result type
 
-const createItem: CreateItem = (payload) => {
+const tryCreateStr100 = (str: string): Result<Str100, CreateStr100Error> => {
+  if (str.length > 100) return error("StringTooLong");
+  return ok(createTag("Str100", str));
+};
+
+const tryCreatePrice = (price: number): Result<Price, CreatePriceError> => {
+  if (price < 0) return error("PriceTooLow");
+  if (price > 1_000_000) return error("PriceTooHigh");
+  return ok(createTag("Price", price));
+};
+
+const tryCreateItem: CreateItem = (payload) => {
+  const name = tryCreateStr100(payload.name);
+  if (isError(name)) return name;
+
+  const price = tryCreatePrice(payload.price);
+  if (isError(price)) return price;
+
   const item: Item = {
     _tag: "Item",
     value: {
-      id: payload.id,
-      name: payload.name,
-      price: payload.price,
+      id: createTag("ID", payload.id),
+      name: createTag("Str100", payload.name),
+      price: createTag("Price", payload.price),
     },
   };
 
@@ -114,19 +140,19 @@ const createPaidCart: CreatePaidCart = (items) =>
 // Examples
 
 export function cartExamples() {
-  const item = createItem({ id: "1", name: "Item 1", price: 100 });
+  const item = tryCreateItem({ id: "1", name: "Item 1", price: 100 });
   if (isError(item)) return;
 
   const createCartResult = createEmptyCart();
   if (isError(createCartResult)) return;
 
-  const addToCartResult = addToCart(createCartResult.data, item.data);
+  const addToCartResult = tryAddToCart(createCartResult.data, item.data);
   if (isError(addToCartResult)) return;
 
-  const removeFromCartResult = removeFromCart(addToCartResult.data, "1");
+  const removeFromCartResult = tryRemoveFromCart(addToCartResult.data, "1");
   if (isError(removeFromCartResult)) return;
 
-  const payForCartResult = payForCart(addToCartResult.data);
+  const payForCartResult = tryPayForCart(addToCartResult.data);
   if (isError(payForCartResult)) return;
 }
 
@@ -135,24 +161,24 @@ export function cartExamples() {
 
 const cartPipeExample = pipeResult(createEmptyCart())
   .flatMap((emptyCart) => {
-    const item = createItem({ id: "1", name: "Laptop", price: 999 });
+    const item = tryCreateItem({ id: "1", name: "Laptop", price: 999 });
     if (isError(item)) return item;
-    return addToCart(emptyCart, item.data);
+    return tryAddToCart(emptyCart, item.data);
   })
   .flatMap((activeCart) => {
-    const duplicateItem = createItem({ id: "2", name: "Mouse", price: 25 });
+    const duplicateItem = tryCreateItem({ id: "2", name: "Mouse", price: 25 });
     if (isError(duplicateItem)) return duplicateItem;
-    return addToCart(activeCart, duplicateItem.data);
+    return tryAddToCart(activeCart, duplicateItem.data);
   })
   .flatMap((activeCart) => {
-    const removeFromCartResult = removeFromCart(activeCart, "1");
+    const removeFromCartResult = tryRemoveFromCart(activeCart, "1");
     if (isError(removeFromCartResult)) return removeFromCartResult;
     return removeFromCartResult;
   })
   .flatMap((activeCart) => {
     if (activeCart._tag === "EmptyCart") return error("EmptyCart");
 
-    const payForCartResult = payForCart(activeCart);
+    const payForCartResult = tryPayForCart(activeCart);
     if (isError(payForCartResult)) return payForCartResult;
     return payForCartResult;
   })

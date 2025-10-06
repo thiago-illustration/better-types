@@ -43,8 +43,9 @@ type UpdateEmail = (
 
 // ======================================================
 // Functions
+// Function names starting with "try" are not guaranteed to succeed and should return a Result type
 
-const validateEmail: ValidateEmail = (email) => {
+const tryValidateEmail: ValidateEmail = (email) => {
   if (!email.includes("@")) return error("InvalidEmail");
   return ok({
     _tag: "Email",
@@ -52,14 +53,14 @@ const validateEmail: ValidateEmail = (email) => {
   });
 };
 
-const verifyEmail: VerifyEmail = (email) => {
+const tryVerifyEmail: VerifyEmail = (email) => {
   return ok({
     _tag: "VerifiedEmail",
     value: email,
   });
 };
 
-const sendResetPasswordEmail: SendResetPasswordEmail = (verifiedEmail) => {
+const trySendResetPasswordEmail: SendResetPasswordEmail = (verifiedEmail) => {
   return ok({
     _tag: "ResetPasswordEmailSent",
     value: {
@@ -68,7 +69,7 @@ const sendResetPasswordEmail: SendResetPasswordEmail = (verifiedEmail) => {
   });
 };
 
-const updateEmail: UpdateEmail = (verifiedEmail) => {
+const tryUpdateEmail: UpdateEmail = (verifiedEmail) => {
   return ok({
     _tag: "UnverifiedEmail",
     value: verifiedEmail.value,
@@ -79,18 +80,18 @@ const updateEmail: UpdateEmail = (verifiedEmail) => {
 // Examples
 
 export function emailExamples() {
-  const validateEmailResult = validateEmail("test@test.com");
+  const validateEmailResult = tryValidateEmail("test@test.com");
   if (isError(validateEmailResult)) return;
 
-  const verifyEmailResult = verifyEmail(validateEmailResult.data);
+  const verifyEmailResult = tryVerifyEmail(validateEmailResult.data);
   if (isError(verifyEmailResult)) return;
 
-  const sendResetPasswordEmailResult = sendResetPasswordEmail(
+  const sendResetPasswordEmailResult = trySendResetPasswordEmail(
     verifyEmailResult.data
   );
   if (isError(sendResetPasswordEmailResult)) return;
 
-  const updateEmailResult = updateEmail(
+  const updateEmailResult = tryUpdateEmail(
     sendResetPasswordEmailResult.data.value.to
   );
   if (isError(updateEmailResult)) return;
@@ -102,10 +103,10 @@ export function emailExamples() {
 // Pipe Examples
 
 export function emailPipeExamples() {
-  const result = pipeResult(validateEmail("test@test.com"))
-    .flatMap((email) => verifyEmail(email))
-    .flatMap((verifiedEmail) => sendResetPasswordEmail(verifiedEmail))
-    .flatMap((verifiedEmail) => updateEmail(verifiedEmail.value.to))
+  const result = pipeResult(tryValidateEmail("test@test.com"))
+    .flatMap((email) => tryVerifyEmail(email))
+    .flatMap((verifiedEmail) => trySendResetPasswordEmail(verifiedEmail))
+    .flatMap((verifiedEmail) => tryUpdateEmail(verifiedEmail.value.to))
     .unwrap();
 
   if (isError(result)) return;

@@ -39,15 +39,16 @@ type DeliverPackage = (
 
 // ======================================================
 // Functions
+// Function names starting with "try" are not guaranteed to succeed and should return a Result type
 
-const shipPackage: ShipPackage = (pkg) => {
+const tryShipPackage: ShipPackage = (pkg) => {
   const shippedPackage = createShippedPackage(pkg.value);
 
   if (isError(shippedPackage)) return error("UnableToShipPackage");
   return ok(shippedPackage.data);
 };
 
-const deliverPackage: DeliverPackage = (pkg) => {
+const tryDeliverPackage: DeliverPackage = (pkg) => {
   const deliveredPackage = createDeliveredPackage(pkg.value);
 
   if (isError(deliveredPackage)) return error("UnableToDeliverPackage");
@@ -82,10 +83,10 @@ export function packageExamples() {
   const createUnshippedPackageResult = createUnshippedPackage("1");
   if (isError(createUnshippedPackageResult)) return;
 
-  const shipPackageResult = shipPackage(createUnshippedPackageResult.data);
+  const shipPackageResult = tryShipPackage(createUnshippedPackageResult.data);
   if (isError(shipPackageResult)) return;
 
-  const deliverPackageResult = deliverPackage(shipPackageResult.data);
+  const deliverPackageResult = tryDeliverPackage(shipPackageResult.data);
   if (isError(deliverPackageResult)) return;
 }
 
@@ -93,8 +94,8 @@ export function packageExamples() {
 // Pipe Examples
 
 const deliveryPipeExample = pipeResult(createUnshippedPackage("1"))
-  .flatMap((unshippedPackage) => shipPackage(unshippedPackage))
-  .flatMap((shippedPackage) => deliverPackage(shippedPackage));
+  .flatMap((unshippedPackage) => tryShipPackage(unshippedPackage))
+  .flatMap((shippedPackage) => tryDeliverPackage(shippedPackage));
 
 export function deliveryPipeExamples() {
   const result = deliveryPipeExample.unwrap();
