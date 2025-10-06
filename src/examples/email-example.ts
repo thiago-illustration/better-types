@@ -45,7 +45,7 @@ type UpdateEmail = (
 // Functions
 // Function names starting with "try" are not guaranteed to succeed and should return a Result type
 
-const tryValidateEmail: ValidateEmail = (email) => {
+const tryValidateEmail: ValidateEmail = (email = "") => {
   if (!email.includes("@")) return error("InvalidEmail");
   return ok({
     _tag: "Email",

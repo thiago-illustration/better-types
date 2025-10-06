@@ -93,9 +93,13 @@ const tryCreateStr100 = (str: string): Result<Str100, CreateStr100Error> => {
   return ok(createTag("Str100", str));
 };
 
-const tryCreatePrice = (price: number): Result<Price, CreatePriceError> => {
-  if (price < 0) return error("PriceTooLow");
-  if (price > 1_000_000) return error("PriceTooHigh");
+const tryCreatePrice = (
+  price: number,
+  minPrice = 0,
+  maxPrice = 1_000_000
+): Result<Price, CreatePriceError> => {
+  if (price < minPrice) return error("PriceTooLow");
+  if (price > maxPrice) return error("PriceTooHigh");
   return ok(createTag("Price", price));
 };
 
@@ -124,13 +128,13 @@ const createEmptyCart: CreateEmptyCart = () =>
     value: [],
   });
 
-const createActiveCart: CreateActiveCart = (items) =>
+const createActiveCart: CreateActiveCart = (items = []) =>
   ok({
     _tag: "ActiveCart",
     value: items,
   });
 
-const createPaidCart: CreatePaidCart = (items) =>
+const createPaidCart: CreatePaidCart = (items = []) =>
   ok({
     _tag: "PaidCart",
     value: items,

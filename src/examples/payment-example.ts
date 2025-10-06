@@ -45,10 +45,12 @@ export type Payment = {
 // Function names starting with "try" are not guaranteed to succeed and should return a Result type
 
 const tryCreateAmount = (
-  amount: number
+  amount: number,
+  minAmount = 0,
+  maxAmount = 1_000_000
 ): Result<Amount, "NoNegativeAmount" | "TooLargeAmount"> => {
-  if (amount < 0) return error("NoNegativeAmount");
-  if (amount > 1_000_000) return error("TooLargeAmount");
+  if (amount < minAmount) return error("NoNegativeAmount");
+  if (amount > maxAmount) return error("TooLargeAmount");
   return ok(createTag("Amount", amount));
 };
 
